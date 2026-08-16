@@ -66,7 +66,7 @@ def analyze_image(image: Image.Image | None, custom_question: str):
     return _render_report(report), custom_answer
 
 
-with gr.Blocks(title="VisualQA India", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="VisualQA India") as demo:
     gr.Markdown(
         "# 🛣️ VisualQA India\n"
         "Upload a road or flood image for BLIP-2 observations and a transparent "
