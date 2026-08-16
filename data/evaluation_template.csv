@@ -1,0 +1,2 @@
+image_path,road_damage,flooding,obstruction,surface_condition,access_safety,notes
+data/raw/example.jpg,0,0,0,0,0,Replace this row with a labelled image; use 1 for visible risk and 0 for no visible risk.

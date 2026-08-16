@@ -1,0 +1,36 @@
+from visualqa.scoring import DIAGNOSTICS, classify_answer, score_answers
+
+
+def _answers(default: str = "No, none is visible.") -> dict[str, str]:
+    return {diagnostic.key: default for diagnostic in DIAGNOSTICS}
+
+
+def test_negated_pothole_is_not_a_risk() -> None:
+    diagnostic = DIAGNOSTICS[0]
+    assert classify_answer("No potholes or cracks are visible.", diagnostic)[0] is False
+
+
+def test_plural_pothole_without_yes_is_a_risk() -> None:
+    diagnostic = DIAGNOSTICS[0]
+    assert classify_answer("Several potholes are visible.", diagnostic)[0] is True
+
+
+def test_unsafe_does_not_count_as_safe() -> None:
+    diagnostic = DIAGNOSTICS[-1]
+    is_risk, evidence = classify_answer("Yes, it looks unsafe.", diagnostic)
+    assert is_risk is True
+    assert evidence == "unsafe"
+
+
+def test_each_category_is_deducted_only_once() -> None:
+    answers = _answers()
+    answers["road_damage"] = "Yes, potholes, cracks and a collapsed road are visible."
+    report = score_answers(answers)
+    assert report["score"] == 75
+    assert len(report["findings"]) == 1
+
+
+def test_all_risks_can_reach_zero() -> None:
+    report = score_answers(_answers("Yes, the harmful condition is visible."))
+    assert report["score"] == 0
+    assert report["severity"] == "HIGH OBSERVED RISK"

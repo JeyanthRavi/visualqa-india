@@ -1,0 +1,5 @@
+accelerate>=1.1,<2
+gradio>=5.0,<7
+pillow>=10.0,<13
+torch>=2.2
+transformers>=4.46,<6
