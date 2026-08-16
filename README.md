@@ -45,7 +45,8 @@ fine-tune a model.
    turn **Internet on** so Hugging Face can download the model.
 3. Upload this repository as a Kaggle Notebook, or open
    `kaggle_visualqa_india.ipynb` after replacing the GitHub URL in its setup cell.
-4. Run all cells. Initial model download/loading can take several minutes.
+4. Run all cells. The final cell verifies the model load before starting Gradio;
+   the initial download/loading can take several minutes.
 5. The final cell starts Gradio and prints a public link.
 
 If Kaggle reports CUDA out-of-memory, restart the session and run only this
