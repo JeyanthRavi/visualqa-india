@@ -94,6 +94,21 @@ datasets. Fine-tuning is a separate project and requires converting annotations
 to image/question/answer examples and evaluating on a location-separated test
 set.
 
+## Train the RDD2022 road-damage detector
+
+For stronger road-damage results, use the included YOLO training pipeline on a
+Kaggle GPU. Add the RDD 2022 dataset, restart the runtime so BLIP-2 is not using
+GPU memory, and run:
+
+```bash
+python -m pip install -r requirements-training.txt
+python train_rdd2022_yolo.py
+```
+
+The script trains on `train`, selects an image-level confidence threshold using
+`val`, and reports final object-detection and image-level metrics on `test`. It
+saves `best.pt`, plots, and a CSV under `/kaggle/working/visualqa_runs`.
+
 ## Test the reasoning layer
 
 The tests do not download BLIP-2:
@@ -127,6 +142,8 @@ visualqa-india/
 ├── app.py
 ├── kaggle_visualqa_india.ipynb
 ├── requirements.txt
+├── requirements-training.txt
+├── train_rdd2022_yolo.py
 ├── data/
 ├── tests/
 └── visualqa/

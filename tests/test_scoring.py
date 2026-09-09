@@ -1,3 +1,6 @@
+import torch
+
+from visualqa.analyzer import select_answer_tokens
 from visualqa.scoring import DIAGNOSTICS, classify_answer, score_answers
 
 
@@ -34,3 +37,15 @@ def test_all_risks_can_reach_zero() -> None:
     report = score_answers(_answers("Yes, the harmful condition is visible."))
     assert report["score"] == 0
     assert report["severity"] == "HIGH OBSERVED RISK"
+
+
+def test_decoder_only_output_drops_prompt_tokens() -> None:
+    output_ids = torch.tensor([[10, 11, 12, 20, 21]])
+    answer_ids = select_answer_tokens(output_ids, prompt_length=3, decoder_only=True)
+    assert answer_ids.tolist() == [[20, 21]]
+
+
+def test_encoder_decoder_output_is_not_sliced() -> None:
+    output_ids = torch.tensor([[20, 21]])
+    answer_ids = select_answer_tokens(output_ids, prompt_length=3, decoder_only=False)
+    assert answer_ids.tolist() == [[20, 21]]
