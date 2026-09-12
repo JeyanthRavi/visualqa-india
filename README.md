@@ -1,67 +1,54 @@
 # VisualQA India
 
-I built VisualQA India as a hybrid research and demonstration application for
-analysing Indian road and flood scenes. A trained YOLO model detects localized
-road defects, BLIP-2 answers broader visual questions, and a transparent
-evidence-fusion layer converts the results into a 0–100 heuristic safety score.
-Without a trained `best.pt`, the application falls back to BLIP-2-only analysis.
+VisualQA India is a multimodal road-safety analysis application for road damage
+and flood conditions. It combines YOLO-based road-damage detection with BLIP-2
+visual question answering and produces a transparent 0–100 safety score through
+a Gradio interface.
 
-> **Important:** this is not a calibrated risk model, civil-engineering
-> inspection, or emergency decision system. BLIP-2 can hallucinate and its model
-> card says it has not been tested for real-world deployment. Results require
-> manual review alongside the source image.
+## Features
 
-## Design and implementation
-
-The application combines open-ended visual question answering with deterministic
-safety rules. The reasoning layer is designed to prevent negated observations,
-such as “no potholes are visible,” from being treated as detected hazards. Its
-main implementation features are:
-
-- asks consistent harmful-condition yes/no questions;
-- handles common negations and whole terms (`unsafe` no longer matches `safe`);
-- applies at most one fixed penalty per diagnostic category;
-- loads the large model lazily and keeps token tensors in an integer dtype;
-- separates the model, scoring logic, Gradio UI, and tests;
-- labels the output honestly as a heuristic score.
+- Detects potholes and cracks with a trained YOLO model
+- Analyses road and flood conditions with BLIP-2
+- Displays detected damage on an annotated image
+- Generates diagnostic observations for each safety category
+- Calculates a deterministic 0–100 safety score
+- Runs through an interactive Gradio interface
+- Supports Kaggle GPU training and inference
 
 ## Architecture
 
 ```text
-uploaded image
-    ├→ trained YOLO → localized cracks/potholes + annotated image
-    └→ BLIP-2 vision encoder + Q-Former + OPT-2.7B → scene answers
-                     ↓
-        evidence fusion (YOLO overrides only road-damage VQA)
-                     ↓
-       deterministic penalties → Gradio report
+Input image
+   ├── YOLO detector ──> road-damage detections
+   └── BLIP-2 ─────────> visual diagnostic answers
+                              │
+                              ▼
+                    Evidence-fusion layer
+                              │
+                              ▼
+                 Safety score and Gradio report
 ```
 
-Model: [Salesforce/blip2-opt-2.7b](https://huggingface.co/Salesforce/blip2-opt-2.7b)
+## Models and datasets
 
-## Run on Kaggle (recommended)
+- [BLIP-2 OPT-2.7B](https://huggingface.co/Salesforce/blip2-opt-2.7b)
+- [RDD2022](https://github.com/sekilab/RoadDamageDetector) for YOLO road-damage training
+- [India Driving Dataset](https://inai.iiit.ac.in/domains/idd.html) for varied Indian road scenes
+- [FloodNet](https://github.com/BinaLab/FloodNet-Challenge-EARTHVISION2021) for flood imagery
 
-Inference requires a JPG or PNG image and pretrained model weights. BLIP-2
-weights are downloaded automatically. Hybrid road-damage detection additionally
-requires a trained YOLO `best.pt` checkpoint. RDD2022 is required for training
-and evaluating that detector, but not for inference with an existing checkpoint.
+## Run on Kaggle
 
-1. Create a Kaggle Notebook.
-2. In **Notebook options**, select a **GPU** accelerator (a T4 is suitable) and
-   turn **Internet on** so Hugging Face can download the model.
-3. Use `kaggle_train_and_run_hybrid.ipynb` to train YOLO and run the complete
-   system, or `kaggle_visualqa_india.ipynb` to run with previously trained
-   `best.pt` weights attached as a Kaggle input.
-4. Run all cells. The final cell verifies the model load before starting Gradio;
-   the initial download/loading can take several minutes.
-5. The final cell starts Gradio and prints a public link.
+1. Create a Kaggle Notebook and enable a GPU accelerator.
+2. Turn on Internet access so the pretrained BLIP-2 weights can be downloaded.
+3. Add RDD2022 as a Kaggle input when training the YOLO detector.
+4. Upload and run `kaggle_train_and_run_hybrid.ipynb`.
 
-If Kaggle reports CUDA out-of-memory, restart the session and run only this
-notebook. Do not load another model in the same session.
+For inference with an existing YOLO checkpoint, attach `best.pt` as a Kaggle
+input and run `kaggle_visualqa_india.ipynb`.
 
 ## Run locally
 
-BLIP-2 OPT-2.7B is large; an NVIDIA GPU is strongly recommended.
+An NVIDIA GPU is recommended for BLIP-2.
 
 ```bash
 git clone https://github.com/JeyanthRavi/visualqa-india.git
@@ -72,92 +59,67 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-To create a temporary public Gradio URL:
+To use a specific YOLO checkpoint:
 
 ```bash
-GRADIO_SHARE=true python app.py
+VISUALQA_YOLO_MODEL=/path/to/best.pt python app.py
 ```
 
-## Datasets
-
-The project uses complementary datasets because no single source covers every
-supported condition:
-
-1. **[RDD2022](https://github.com/sekilab/RoadDamageDetector)** — start with its
-   India subset for potholes/cracks and annotated road damage.
-2. **[India Driving Dataset (IDD)](https://inai.iiit.ac.in/domains/idd.html)** —
-   use varied Indian road scenes, especially clean/normal negative examples.
-3. **[FloodNet](https://github.com/BinaLab/FloodNet-Challenge-EARTHVISION2021)** —
-   use for flood imagery, while noting that aerial images differ from typical
-   street-level uploads.
-
-An application-specific evaluation set should reflect realistic user photos. A
-useful initial target is 200–500 manually reviewed images, balanced across the
-five risk labels and urban/rural, day/night, rain/dry, paved/unpaved, and
-phone/dashcam viewpoints. The [`data/`](data/) directory contains the label
-template. Dataset licences must be checked before redistribution, and large
-datasets should not be committed to GitHub.
-
-BLIP-2 performs **zero-shot inference**. The separate YOLO component is trained
-on RDD2022. Fine-tuning BLIP-2 remains a separate research task requiring
-image/question/answer examples rather than YOLO bounding-box annotations.
-
-## Train the RDD2022 road-damage detector
-
-The included YOLO training pipeline produces the road-damage detector on a
-Kaggle GPU. After attaching RDD2022, the following commands install the training
-dependencies and start training:
+## Train the road-damage detector
 
 ```bash
 python -m pip install -r requirements-training.txt
 python train_rdd2022_yolo.py
 ```
 
-The script trains on `train`, selects an image-level confidence threshold using
-`val`, and reports final object-detection and image-level metrics on `test`. It
-saves a deployable `best.pt`, `detector_config.json`, plots, and a CSV under
-`/kaggle/working/visualqa_runs`. The application discovers these files
-automatically. A checkpoint attached elsewhere can be selected with:
+Training outputs are saved under `visualqa_runs`. They include the trained
+`best.pt` checkpoint, selected confidence threshold, evaluation metrics, plots,
+and prediction results.
 
-```bash
-VISUALQA_YOLO_MODEL=/path/to/best.pt python app.py
-```
+## Evaluation
 
-## Test the reasoning layer
+The training pipeline reports:
 
-The tests do not download BLIP-2:
+- Precision
+- Recall
+- F1 score
+- Accuracy and specificity at image level
+- mAP50 and mAP50–95 for object detection
+- Confusion matrix
+
+## Tests
 
 ```bash
 python -m pip install pytest
 pytest -q
 ```
 
-## Repository policy
-
-Model weights and raw datasets are excluded from version control. They are
-downloaded at runtime or attached separately in Kaggle, subject to their
-respective licences.
-
 ## Project structure
 
 ```text
 visualqa-india/
 ├── app.py
-├── kaggle_visualqa_india.ipynb
+├── train_rdd2022_yolo.py
 ├── kaggle_train_and_run_hybrid.ipynb
+├── kaggle_visualqa_india.ipynb
 ├── requirements.txt
 ├── requirements-training.txt
-├── train_rdd2022_yolo.py
 ├── data/
+├── models/
 ├── tests/
-├── models/                 # optional local best.pt (ignored by Git)
 └── visualqa/
     ├── analyzer.py
     ├── detector.py
     └── scoring.py
 ```
 
-## Licence
+## Limitations
 
-Project code is MIT-licensed. Model and datasets retain their own licences and
-terms.
+The safety score is a heuristic research output, not a replacement for a civil
+engineering inspection or an emergency assessment. Results should be reviewed
+with the original image before use.
+
+## License
+
+This project is licensed under the MIT License. Models and datasets retain their
+original licenses and terms of use.
