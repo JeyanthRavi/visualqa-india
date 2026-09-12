@@ -1,21 +1,22 @@
 # VisualQA India
 
-VisualQA India is a hybrid research/demo application. A trained YOLO model
-detects localized road defects, BLIP-2 answers broader questions about road and
-flood scenes, and a transparent evidence-fusion layer converts the results into
-a 0–100 heuristic safety score. Without a trained `best.pt`, the app clearly
-falls back to BLIP-2-only analysis.
+I built VisualQA India as a hybrid research and demonstration application for
+analysing Indian road and flood scenes. A trained YOLO model detects localized
+road defects, BLIP-2 answers broader visual questions, and a transparent
+evidence-fusion layer converts the results into a 0–100 heuristic safety score.
+Without a trained `best.pt`, the application falls back to BLIP-2-only analysis.
 
 > **Important:** this is not a calibrated risk model, civil-engineering
 > inspection, or emergency decision system. BLIP-2 can hallucinate and its model
-> card says it has not been tested for real-world deployment. Always review the
-> image and answers manually.
+> card says it has not been tested for real-world deployment. Results require
+> manual review alongside the source image.
 
-## What was fixed
+## Design and implementation
 
-The original notebook was valid-looking but untested. In particular, a sentence
-such as “no potholes are visible” still triggered the word `pothole`, and one
-answer could receive both a high- and medium-risk deduction. This version:
+The application combines open-ended visual question answering with deterministic
+safety rules. The reasoning layer is designed to prevent negated observations,
+such as “no potholes are visible,” from being treated as detected hazards. Its
+main implementation features are:
 
 - asks consistent harmful-condition yes/no questions;
 - handles common negations and whole terms (`unsafe` no longer matches `safe`);
@@ -40,9 +41,10 @@ Model: [Salesforce/blip2-opt-2.7b](https://huggingface.co/Salesforce/blip2-opt-2
 
 ## Run on Kaggle (recommended)
 
-You do **not** need a dataset to run the application. You only need one or more
-JPG/PNG test images. A dataset is needed when you want to measure accuracy or
-fine-tune a model.
+Inference requires a JPG or PNG image and pretrained model weights. BLIP-2
+weights are downloaded automatically. Hybrid road-damage detection additionally
+requires a trained YOLO `best.pt` checkpoint. RDD2022 is required for training
+and evaluating that detector, but not for inference with an existing checkpoint.
 
 1. Create a Kaggle Notebook.
 2. In **Notebook options**, select a **GPU** accelerator (a T4 is suitable) and
@@ -76,9 +78,10 @@ To create a temporary public Gradio URL:
 GRADIO_SHARE=true python app.py
 ```
 
-## Which dataset should you use?
+## Datasets
 
-Use a combination rather than a single dataset:
+The project uses complementary datasets because no single source covers every
+supported condition:
 
 1. **[RDD2022](https://github.com/sekilab/RoadDamageDetector)** — start with its
    India subset for potholes/cracks and annotated road damage.
@@ -88,11 +91,12 @@ Use a combination rather than a single dataset:
    use for flood imagery, while noting that aerial images differ from typical
    street-level uploads.
 
-For this exact application, build a small evaluation set that matches real user
-photos. Aim initially for 200–500 manually reviewed images, balanced across the
-five risk labels and across urban/rural, day/night, rain/dry, paved/unpaved, and
-phone/dashcam viewpoints. See [`data/`](data/) for the label template. Check each
-dataset's licence before redistribution; do not commit large datasets to GitHub.
+An application-specific evaluation set should reflect realistic user photos. A
+useful initial target is 200–500 manually reviewed images, balanced across the
+five risk labels and urban/rural, day/night, rain/dry, paved/unpaved, and
+phone/dashcam viewpoints. The [`data/`](data/) directory contains the label
+template. Dataset licences must be checked before redistribution, and large
+datasets should not be committed to GitHub.
 
 BLIP-2 performs **zero-shot inference**. The separate YOLO component is trained
 on RDD2022. Fine-tuning BLIP-2 remains a separate research task requiring
@@ -100,9 +104,9 @@ image/question/answer examples rather than YOLO bounding-box annotations.
 
 ## Train the RDD2022 road-damage detector
 
-For stronger road-damage results, use the included YOLO training pipeline on a
-Kaggle GPU. Add the RDD 2022 dataset, restart the runtime so BLIP-2 is not using
-GPU memory, and run:
+The included YOLO training pipeline produces the road-damage detector on a
+Kaggle GPU. After attaching RDD2022, the following commands install the training
+dependencies and start training:
 
 ```bash
 python -m pip install -r requirements-training.txt
@@ -128,25 +132,11 @@ python -m pip install pytest
 pytest -q
 ```
 
-## GitHub repository
+## Repository policy
 
-The maintained repository is:
-
-```text
-https://github.com/JeyanthRavi/visualqa-india
-```
-
-To contribute from a branch:
-
-```bash
-git checkout -b codex/my-change
-git add <changed-files>
-git commit -m "Describe the change"
-git push -u origin codex/my-change
-```
-
-Do not add model weights or raw datasets to the repository; they are ignored or
-downloaded at runtime.
+Model weights and raw datasets are excluded from version control. They are
+downloaded at runtime or attached separately in Kaggle, subject to their
+respective licences.
 
 ## Project structure
 

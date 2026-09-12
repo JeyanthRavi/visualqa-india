@@ -1,11 +1,12 @@
 # Evaluation data
 
-No dataset is required to run the pretrained BLIP-2 demo. Upload any JPG or PNG
-through Gradio.
+The pretrained BLIP-2 component accepts JPG and PNG images through Gradio. The
+RDD2022 dataset is required only for training or evaluating the YOLO
+road-damage detector; inference can use an existing `best.pt` checkpoint.
 
-For a meaningful evaluation, create a balanced set of Indian road and flood
-images under `data/raw/` and complete `evaluation_template.csv`. Keep the raw
-images out of Git unless their licence explicitly permits redistribution.
+A meaningful evaluation requires a balanced set of Indian road and flood images
+under `data/raw/` with labels recorded in `evaluation_template.csv`. Raw images
+must remain outside Git unless their licence explicitly permits redistribution.
 
 Suggested sources:
 
@@ -17,6 +18,7 @@ Suggested sources:
   match phone/dashcam uploads; add locally collected, consented street-level flood
   images if possible.
 
-Before claiming performance, manually label at least 200–500 images across
-day/night, rain/dry, urban/rural, paved/unpaved, and different camera positions.
-Split by location or capture sequence to avoid near-duplicate leakage.
+Performance claims should be based on at least 200–500 manually labelled images
+covering day/night, rain/dry, urban/rural, paved/unpaved, and different camera
+positions. Splitting by location or capture sequence reduces near-duplicate
+leakage.
