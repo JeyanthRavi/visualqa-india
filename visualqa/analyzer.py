@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Mapping
 
 from PIL import Image, ImageOps
 
@@ -74,11 +74,15 @@ class VisualQAAnalyzer:
             output_ids, skip_special_tokens=True
         )[0].strip()
 
-    def analyze(self, image: Image.Image) -> dict:
+    def analyze(
+        self,
+        image: Image.Image,
+        risk_overrides: Mapping[str, tuple[bool, str]] | None = None,
+    ) -> dict:
         answers = {
             diagnostic.key: self.ask(image, diagnostic.question)
             for diagnostic in DIAGNOSTICS
         }
-        report = score_answers(answers)
+        report = score_answers(answers, risk_overrides=risk_overrides)
         report["answers"] = answers
         return report

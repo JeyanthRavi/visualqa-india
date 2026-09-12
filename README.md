@@ -1,8 +1,10 @@
 # VisualQA India
 
-VisualQA India is a research/demo application that uses BLIP-2 to answer five
-targeted questions about a road or flood image, then converts those generated
-answers into a transparent 0–100 heuristic safety score.
+VisualQA India is a hybrid research/demo application. A trained YOLO model
+detects localized road defects, BLIP-2 answers broader questions about road and
+flood scenes, and a transparent evidence-fusion layer converts the results into
+a 0–100 heuristic safety score. Without a trained `best.pt`, the app clearly
+falls back to BLIP-2-only analysis.
 
 > **Important:** this is not a calibrated risk model, civil-engineering
 > inspection, or emergency decision system. BLIP-2 can hallucinate and its model
@@ -26,10 +28,12 @@ answer could receive both a high- and medium-risk deduction. This version:
 
 ```text
 uploaded image
-    → BLIP-2 vision encoder + Q-Former + OPT-2.7B
-    → five short diagnostic answers
-    → deterministic category rules and penalties
-    → Gradio report + optional custom VQA answer
+    ├→ trained YOLO → localized cracks/potholes + annotated image
+    └→ BLIP-2 vision encoder + Q-Former + OPT-2.7B → scene answers
+                     ↓
+        evidence fusion (YOLO overrides only road-damage VQA)
+                     ↓
+       deterministic penalties → Gradio report
 ```
 
 Model: [Salesforce/blip2-opt-2.7b](https://huggingface.co/Salesforce/blip2-opt-2.7b)
@@ -43,8 +47,9 @@ fine-tune a model.
 1. Create a Kaggle Notebook.
 2. In **Notebook options**, select a **GPU** accelerator (a T4 is suitable) and
    turn **Internet on** so Hugging Face can download the model.
-3. Upload this repository as a Kaggle Notebook, or open
-   `kaggle_visualqa_india.ipynb` after replacing the GitHub URL in its setup cell.
+3. Use `kaggle_train_and_run_hybrid.ipynb` to train YOLO and run the complete
+   system, or `kaggle_visualqa_india.ipynb` to run with previously trained
+   `best.pt` weights attached as a Kaggle input.
 4. Run all cells. The final cell verifies the model load before starting Gradio;
    the initial download/loading can take several minutes.
 5. The final cell starts Gradio and prints a public link.
@@ -57,7 +62,7 @@ notebook. Do not load another model in the same session.
 BLIP-2 OPT-2.7B is large; an NVIDIA GPU is strongly recommended.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/visualqa-india.git
+git clone https://github.com/JeyanthRavi/visualqa-india.git
 cd visualqa-india
 python -m venv .venv
 source .venv/bin/activate
@@ -89,10 +94,9 @@ five risk labels and across urban/rural, day/night, rain/dry, paved/unpaved, and
 phone/dashcam viewpoints. See [`data/`](data/) for the label template. Check each
 dataset's licence before redistribution; do not commit large datasets to GitHub.
 
-The current app performs **zero-shot inference**. It does not train on those
-datasets. Fine-tuning is a separate project and requires converting annotations
-to image/question/answer examples and evaluating on a location-separated test
-set.
+BLIP-2 performs **zero-shot inference**. The separate YOLO component is trained
+on RDD2022. Fine-tuning BLIP-2 remains a separate research task requiring
+image/question/answer examples rather than YOLO bounding-box annotations.
 
 ## Train the RDD2022 road-damage detector
 
@@ -107,7 +111,13 @@ python train_rdd2022_yolo.py
 
 The script trains on `train`, selects an image-level confidence threshold using
 `val`, and reports final object-detection and image-level metrics on `test`. It
-saves `best.pt`, plots, and a CSV under `/kaggle/working/visualqa_runs`.
+saves a deployable `best.pt`, `detector_config.json`, plots, and a CSV under
+`/kaggle/working/visualqa_runs`. The application discovers these files
+automatically. A checkpoint attached elsewhere can be selected with:
+
+```bash
+VISUALQA_YOLO_MODEL=/path/to/best.pt python app.py
+```
 
 ## Test the reasoning layer
 
@@ -118,18 +128,21 @@ python -m pip install pytest
 pytest -q
 ```
 
-## Upload to GitHub
+## GitHub repository
 
-Create an empty GitHub repository named `visualqa-india`, then run from this
-folder:
+The maintained repository is:
+
+```text
+https://github.com/JeyanthRavi/visualqa-india
+```
+
+To contribute from a branch:
 
 ```bash
-git init
-git add .
-git commit -m "Build tested VisualQA India demo"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/visualqa-india.git
-git push -u origin main
+git checkout -b codex/my-change
+git add <changed-files>
+git commit -m "Describe the change"
+git push -u origin codex/my-change
 ```
 
 Do not add model weights or raw datasets to the repository; they are ignored or
@@ -141,13 +154,16 @@ downloaded at runtime.
 visualqa-india/
 ├── app.py
 ├── kaggle_visualqa_india.ipynb
+├── kaggle_train_and_run_hybrid.ipynb
 ├── requirements.txt
 ├── requirements-training.txt
 ├── train_rdd2022_yolo.py
 ├── data/
 ├── tests/
+├── models/                 # optional local best.pt (ignored by Git)
 └── visualqa/
     ├── analyzer.py
+    ├── detector.py
     └── scoring.py
 ```
 

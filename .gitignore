@@ -7,3 +7,5 @@ venv/
 .DS_Store
 outputs/
 data/raw/
+models/*.pt
+visualqa_runs/

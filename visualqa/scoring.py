@@ -109,16 +109,25 @@ def classify_answer(answer: str, diagnostic: Diagnostic) -> tuple[bool, str | No
     return False, None
 
 
-def score_answers(answers: Mapping[str, str] | Iterable[tuple[str, str]]) -> dict:
-    """Score one answer per diagnostic, deducting each category at most once."""
+def score_answers(
+    answers: Mapping[str, str] | Iterable[tuple[str, str]],
+    risk_overrides: Mapping[str, tuple[bool, str]] | None = None,
+) -> dict:
+    """Score answers, optionally replacing a category with specialist evidence."""
     answer_map = dict(answers)
+    override_map = dict(risk_overrides or {})
     score = 100
     findings: list[dict] = []
     unknown: list[str] = []
 
     for diagnostic in DIAGNOSTICS:
         answer = str(answer_map.get(diagnostic.key, "")).strip()
-        is_risk, evidence = classify_answer(answer, diagnostic)
+        if diagnostic.key in override_map:
+            is_risk, evidence = override_map[diagnostic.key]
+            source = "specialist detector"
+        else:
+            is_risk, evidence = classify_answer(answer, diagnostic)
+            source = "BLIP-2"
         if is_risk:
             score -= diagnostic.penalty
             findings.append(
@@ -128,6 +137,7 @@ def score_answers(answers: Mapping[str, str] | Iterable[tuple[str, str]]) -> dic
                     "penalty": diagnostic.penalty,
                     "evidence": evidence,
                     "answer": answer,
+                    "source": source,
                 }
             )
         elif evidence is None:

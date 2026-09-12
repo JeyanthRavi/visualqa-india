@@ -7,6 +7,8 @@ confidence threshold; the test split is used once for final metrics.
 from __future__ import annotations
 
 import argparse
+import json
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -199,7 +201,22 @@ def main() -> None:
     results_path = args.output / "rdd2022_image_level_test.csv"
     results_path.parent.mkdir(parents=True, exist_ok=True)
     test.to_csv(results_path, index=False)
-    print(f"Best model: {best_path}")
+    deploy_model_path = args.output / "best.pt"
+    shutil.copy2(best_path, deploy_model_path)
+    detector_config_path = args.output / "detector_config.json"
+    detector_config_path.write_text(
+        json.dumps(
+            {
+                "confidence_threshold": threshold,
+                "class_names": CLASS_NAMES,
+                "image_size": args.imgsz,
+            },
+            indent=2,
+        )
+    )
+    print(f"Training checkpoint: {best_path}")
+    print(f"Deployable model: {deploy_model_path}")
+    print(f"Detector config: {detector_config_path}")
     print(f"Predictions: {results_path}")
 
 

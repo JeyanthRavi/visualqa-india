@@ -49,3 +49,24 @@ def test_encoder_decoder_output_is_not_sliced() -> None:
     output_ids = torch.tensor([[20, 21]])
     answer_ids = select_answer_tokens(output_ids, prompt_length=3, decoder_only=False)
     assert answer_ids.tolist() == [[20, 21]]
+
+
+def test_specialist_detector_overrides_blip_road_answer() -> None:
+    answers = _answers()
+    answers["road_damage"] = "No, the road looks smooth."
+    report = score_answers(
+        answers,
+        risk_overrides={"road_damage": (True, "YOLO detected a pothole")},
+    )
+    assert report["score"] == 75
+    assert report["findings"][0]["source"] == "specialist detector"
+
+
+def test_negative_detector_override_prevents_blip_false_positive() -> None:
+    answers = _answers()
+    answers["road_damage"] = "Yes, potholes are visible."
+    report = score_answers(
+        answers,
+        risk_overrides={"road_damage": (False, "No detection above threshold")},
+    )
+    assert report["score"] == 100
